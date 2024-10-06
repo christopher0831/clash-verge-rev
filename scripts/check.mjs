@@ -354,53 +354,6 @@ const resolvePlugin = async () => {
   }
 };
 
-// service chmod
-const resolveServicePermission = async () => {
-  const serviceExecutables = [
-    "clash-verge-service",
-    "install-service",
-    "uninstall-service",
-  ];
-  const resDir = path.join(cwd, "src-tauri/resources");
-  for (let f of serviceExecutables) {
-    const targetPath = path.join(resDir, f);
-    if (fs.existsSync(targetPath)) {
-      execSync(`chmod 755 ${targetPath}`);
-      log_success(`chmod finished: "${f}"`);
-    }
-  }
-};
-
-/**
- * main
- */
-
-const SERVICE_URL = `https://github.com/clash-verge-rev/clash-verge-service/releases/download/${SIDECAR_HOST}`;
-
-const resolveService = () => {
-  let ext = platform === "win32" ? ".exe" : "";
-  resolveResource({
-    file: "clash-verge-service" + ext,
-    downloadURL: `${SERVICE_URL}/clash-verge-service${ext}`,
-  });
-};
-
-const resolveInstall = () => {
-  let ext = platform === "win32" ? ".exe" : "";
-  resolveResource({
-    file: "install-service" + ext,
-    downloadURL: `${SERVICE_URL}/install-service${ext}`,
-  });
-};
-
-const resolveUninstall = () => {
-  let ext = platform === "win32" ? ".exe" : "";
-  resolveResource({
-    file: "uninstall-service" + ext,
-    downloadURL: `${SERVICE_URL}/uninstall-service${ext}`,
-  });
-};
-
 const resolveMmdb = () =>
   resolveResource({
     file: "Country.mmdb",
@@ -443,9 +396,6 @@ const tasks = [
     retry: 5,
   },
   { name: "plugin", func: resolvePlugin, retry: 5, winOnly: true },
-  { name: "service", func: resolveService, retry: 5 },
-  { name: "install", func: resolveInstall, retry: 5 },
-  { name: "uninstall", func: resolveUninstall, retry: 5 },
   { name: "mmdb", func: resolveMmdb, retry: 5 },
   { name: "geosite", func: resolveGeosite, retry: 5 },
   { name: "geoip", func: resolveGeoIP, retry: 5 },
@@ -454,12 +404,6 @@ const tasks = [
     func: resolveEnableLoopback,
     retry: 5,
     winOnly: true,
-  },
-  {
-    name: "service_chmod",
-    func: resolveServicePermission,
-    retry: 1,
-    unixOnly: true,
   },
   {
     name: "windows-sysproxy",
