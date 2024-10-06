@@ -375,26 +375,6 @@ pub fn exit_app() {
     feat::quit(Some(0));
 }
 
-pub mod service {
-    use super::*;
-    use crate::core::service;
-
-    #[tauri::command]
-    pub async fn check_service() -> CmdResult<service::JsonResponse> {
-        wrap_err!(service::check_service().await)
-    }
-
-    #[tauri::command]
-    pub async fn install_service(passwd: String) -> CmdResult {
-        wrap_err!(service::install_service(passwd).await)
-    }
-
-    #[tauri::command]
-    pub async fn uninstall_service(passwd: String) -> CmdResult {
-        wrap_err!(service::uninstall_service(passwd).await)
-    }
-}
-
 #[cfg(not(windows))]
 pub mod uwp {
     use super::*;

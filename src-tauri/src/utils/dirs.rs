@@ -47,9 +47,7 @@ pub fn app_home_dir() -> Result<PathBuf> {
     let app_handle = handle::Handle::global().app_handle().unwrap();
 
     match app_handle.path().data_dir() {
-        Ok(dir) => {
-            Ok(dir.join(APP_ID))
-        }
+        Ok(dir) => Ok(dir.join(APP_ID)),
         Err(e) => {
             log::error!("Failed to get the app home directory: {}", e);
             Err(anyhow::anyhow!("Failed to get the app homedirectory"))
@@ -61,9 +59,7 @@ pub fn app_home_dir() -> Result<PathBuf> {
 pub fn app_resources_dir() -> Result<PathBuf> {
     let app_handle = handle::Handle::global().app_handle().unwrap();
     match app_handle.path().resource_dir() {
-        Ok(dir) => {
-            Ok(dir.join("resources"))
-        }
+        Ok(dir) => Ok(dir.join("resources")),
         Err(e) => {
             log::error!("Failed to get the resource directory: {}", e);
             Err(anyhow::anyhow!("Failed to get the resource directory"))
@@ -101,20 +97,6 @@ pub fn service_path() -> Result<PathBuf> {
 #[cfg(windows)]
 pub fn service_path() -> Result<PathBuf> {
     Ok(app_resources_dir()?.join("clash-verge-service.exe"))
-}
-
-pub fn service_log_file() -> Result<PathBuf> {
-    use chrono::Local;
-
-    let log_dir = app_logs_dir()?.join("service");
-
-    let local_time = Local::now().format("%Y-%m-%d-%H%M").to_string();
-    let log_file = format!("{}.log", local_time);
-    let log_file = log_dir.join(log_file);
-
-    let _ = std::fs::create_dir_all(&log_dir);
-
-    Ok(log_file)
 }
 
 pub fn path_to_str(path: &PathBuf) -> Result<&str> {

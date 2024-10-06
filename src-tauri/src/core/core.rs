@@ -1,15 +1,12 @@
 use crate::config::*;
-use crate::core::{clash_api, handle, logger::Logger, service};
+use crate::core::{clash_api, handle, logger::Logger};
 use crate::log_err;
 use crate::utils::dirs;
 use anyhow::{bail, Result};
 use once_cell::sync::OnceCell;
 use serde_yaml::Mapping;
-use std::ffi::OsStr;
 use std::{sync::Arc, time::Duration};
-use sysinfo::ProcessesToUpdate;
-use sysinfo::{ProcessRefreshKind, RefreshKind, System};
-use tauri_plugin_shell::process::CommandEvent;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 use tokio::sync::Mutex;
 
@@ -17,6 +14,7 @@ use tokio::time::sleep;
 
 #[derive(Debug)]
 pub struct CoreManager {
+    sidecar: Arc<Mutex<Option<CommandChild>>>,
     running: Arc<Mutex<bool>>,
 }
 
@@ -25,6 +23,7 @@ impl CoreManager {
         static CORE_MANAGER: OnceCell<CoreManager> = OnceCell::new();
 
         CORE_MANAGER.get_or_init(|| CoreManager {
+            sidecar: Arc::new(Mutex::new(None)),
             running: Arc::new(Mutex::new(false)),
         })
     }
@@ -79,8 +78,6 @@ impl CoreManager {
             return Ok(());
         }
 
-        let clash_core = { Config::verge().latest().clash_core.clone() };
-        let clash_core = clash_core.unwrap_or("verge-mihomo".into());
         // 关闭tun模式
         let mut disable = Mapping::new();
         let mut tun = Mapping::new();
@@ -89,11 +86,9 @@ impl CoreManager {
         log::debug!(target: "app", "disable tun mode");
         log_err!(clash_api::patch_configs(&disable).await);
 
-        // 服务模式
-        log::debug!(target: "app", "stop the core by service");
-        log_err!(service::stop_core_by_service().await);
-
-        kill_processes_by_name(clash_core.as_str());
+        if let Some(sidecar) = self.sidecar.lock().await.take() {
+            let _ = sidecar.kill();
+        }
         *running = false;
 
         Ok(())
@@ -110,30 +105,6 @@ impl CoreManager {
         let config_path = Config::generate_file(ConfigType::Run)?;
         let clash_core = { Config::verge().latest().clash_core.clone() };
         let clash_core = clash_core.unwrap_or("verge-mihomo".into());
-        // 服务模式
-        let service_enable = { Config::verge().latest().enable_service_mode };
-        let service_enable = service_enable.unwrap_or(false);
-        if service_enable {
-            // 服务模式启动失败就直接运行sidecar
-            log::debug!(target: "app", "try to run core in service mode");
-
-            let res = async {
-                service::check_service().await?;
-                service::run_core_by_service(&config_path).await
-            }
-            .await;
-            match res {
-                Ok(_) => {
-                    return {
-                        *running = true;
-                        Ok(())
-                    }
-                }
-                Err(err) => {
-                    log::error!(target: "app start service err", "{err}");
-                }
-            }
-        }
 
         let app_dir = dirs::app_home_dir()?;
         let app_dir = dirs::path_to_str(&app_dir)?;
@@ -141,7 +112,7 @@ impl CoreManager {
         let args = vec!["-d", app_dir, "-f", config_path];
         let app_handle = handle::Handle::global().app_handle().unwrap();
         let cmd = app_handle.shell().sidecar(clash_core)?;
-        let (mut rx, _) = cmd.args(args).spawn()?;
+        let (mut rx, child) = cmd.args(args).spawn()?;
 
         tauri::async_runtime::spawn(async move {
             while let Some(event) = rx.recv().await {
@@ -168,6 +139,9 @@ impl CoreManager {
                 }
             }
         });
+        let mut sidecar = self.sidecar.lock().await;
+        *sidecar = Some(child);
+
         *running = true;
         Ok(())
     }
@@ -245,19 +219,5 @@ impl CoreManager {
             sleep(Duration::from_millis(100)).await;
         }
         Ok(())
-    }
-}
-
-fn kill_processes_by_name(process_name: &str) {
-    let mut system = System::new_with_specifics(
-        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
-    );
-
-    system.refresh_processes(ProcessesToUpdate::All);
-    let process_name = OsStr::new(process_name);
-    let procs = system.processes_by_name(process_name);
-    for proc in procs {
-        log::debug!(target: "app", "Killing process: {:?}", proc.name());
-        proc.kill();
     }
 }

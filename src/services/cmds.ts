@@ -188,27 +188,6 @@ export async function cmdTestDelay(url: string) {
   return invoke<number>("test_delay", { url });
 }
 
-/// service mode
-
-export async function checkService() {
-  try {
-    const result = await invoke<any>("check_service");
-    if (result?.code === 0) return "active";
-    if (result?.code === 400) return "installed";
-    return "unknown";
-  } catch (err: any) {
-    return "uninstall";
-  }
-}
-
-export async function installService(passwd: string) {
-  return invoke<void>("install_service", { passwd });
-}
-
-export async function uninstallService(passwd: string) {
-  return invoke<void>("uninstall_service", { passwd });
-}
-
 export async function invoke_uwp_tool() {
   return invoke<void>("invoke_uwp_tool").catch((err) =>
     Notice.error(err?.message || err.toString(), 1500)

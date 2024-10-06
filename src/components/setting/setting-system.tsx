@@ -20,16 +20,6 @@ const SettingSystem = ({ onError }: Props) => {
   const { t } = useTranslation();
 
   const { verge, mutateVerge, patchVerge } = useVerge();
-  // service mode
-  const { data: serviceStatus, mutate: mutateServiceStatus } = useSWR(
-    "checkService",
-    checkService,
-    {
-      revalidateIfStale: false,
-      shouldRetryOnError: false,
-      focusThrottleInterval: 36e5, // 1 hour
-    }
-  );
 
   const sysproxyRef = useRef<DialogRef>(null);
   const tunRef = useRef<DialogRef>(null);
@@ -67,35 +57,14 @@ const SettingSystem = ({ onError }: Props) => {
           onCatch={onError}
           onFormat={onSwitchFormat}
           onChange={(e) => {
-            if (serviceStatus !== "active") {
-              onChangeData({ enable_tun_mode: false });
-            } else {
-              onChangeData({ enable_tun_mode: e });
-            }
+            onChangeData({ enable_tun_mode: e });
           }}
           onGuard={(e) => {
-            if (serviceStatus !== "active" && e) {
-              Notice.error(t("Please Enable Service Mode"));
-              return Promise.resolve();
-            } else {
-              return patchVerge({ enable_tun_mode: e });
-            }
+            return patchVerge({ enable_tun_mode: e });
           }}
         >
           <Switch edge="end" />
         </GuardState>
-      </SettingItem>
-
-      <SettingItem
-        label={t("Service Mode")}
-        extra={<TooltipIcon title={t("Service Mode Info")} />}
-      >
-        <ServiceSwitcher
-          status={serviceStatus ?? "unknown"}
-          mutate={mutateServiceStatus}
-          patchVerge={patchVerge}
-          onChangeData={onChangeData}
-        />
       </SettingItem>
 
       <SettingItem

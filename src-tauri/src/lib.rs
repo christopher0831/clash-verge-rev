@@ -116,10 +116,6 @@ pub fn run() {
             cmds::delete_profile,
             cmds::read_profile_file,
             cmds::save_profile_file,
-            // service mode
-            cmds::service::check_service,
-            cmds::service::install_service,
-            cmds::service::uninstall_service,
             // clash api
             cmds::clash_api_get_proxy_delay
         ]);
